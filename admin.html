@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yönetim Paneli – Örümceğin Bilgi Ağı</title>
+<style>
+:root{--wood:#8a5a2b;--ink:#2e2216;--bg:#f7f1e3;--ok:#23702a;--err:#a8261d;--warn:#8a5200;--line:#dccaa2;
+  --font-ar:"ShaikhHamdullahBasic","Amiri","Scheherazade New","Noto Naskh Arabic","Traditional Arabic",serif}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:var(--wood);color:#fff;padding:14px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+header h1{margin:0;font-size:1.4rem}
+main{padding:20px 24px;max-width:1500px;margin:auto}
+section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-bottom:20px}
+h2{margin-top:0;color:var(--wood)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:#f3e6c8}
+.ok{color:var(--ok);font-weight:700}.err{color:var(--err);font-weight:700}.warn{color:var(--warn);font-weight:700}
+.ar{font-family:var(--font-ar);direction:rtl;font-size:1.8rem;line-height:2.2;text-align:right}
+.thumb{max-width:90px;max-height:70px;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0/16px 16px}
+button,.btn{font:inherit;padding:8px 14px;border-radius:8px;border:2px solid var(--wood);background:#fff4dc;cursor:pointer;font-weight:700;color:var(--ink);text-decoration:none}
+button:focus-visible,a:focus-visible{outline:3px solid #1c5b93;outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.kv{background:#fbf6ea;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.kv b{display:block;font-size:.8rem;color:#6b5a44}
+.correct{background:#e2f2dc;font-weight:700}
+ul.checks li{margin:.3em 0}
+#status{font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1>Yönetim Paneli – Örümceğin Bilgi Ağı</h1>
+  <div>
+    <a class="btn" href="index.html">Oyunu Aç</a>
+    <button type="button" id="btn-json">İçeriği JSON Olarak İndir</button>
+    <button type="button" id="btn-txt">Soru Listesini TXT Olarak İndir</button>
+  </div>
+</header>
+<main>
+  <p id="status" role="status">Oyun verileri index.html dosyasından okunuyor…</p>
+  <div id="content"></div>
+</main>
+<!-- Veriler index.html'den okunur (tek kaynak). index.html bu klasörde olmalıdır. -->
+<iframe id="src" src="index.html?mode=admin-export" title="Veri kaynağı" style="display:none"></iframe>
+<script>
+"use strict";
+let DATA = null;
+const $ = s => document.querySelector(s);
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) { if (v == null) continue; if (k === "text") n.textContent = v; else if (k === "class") n.className = v; else n.setAttribute(k, v); }
+  kids.flat().forEach(c => c != null && n.append(c instanceof Node ? c : document.createTextNode(String(c))));
+  return n;
+}
+window.addEventListener("message", e => {
+  if (!e.data || e.data.type !== "ANKEBUT_GAME_DATA" || DATA) return;
+  DATA = e.data.payload; render();
+});
+setTimeout(() => { if (!DATA) $("#status").textContent = "⚠ Veriler okunamadı. admin.html ile index.html aynı klasörde olmalıdır."; }, 4000);
+
+function render() {
+  const C = DATA.CONFIG, c = $("#content");
+  $("#status").textContent = "✓ Veriler yüklendi.";
+  // Genel bilgi
+  const g = C.game;
+  let scored = 0; DATA.STAGES.forEach(s => s.steps.forEach(st => { if (["mcq","tf","multi","match","record"].includes(st.type)) scored++; }));
+  c.append(el("section", {}, el("h2", { text: "Oyun Bilgileri" }), el("div", { class: "grid" },
+    [["Oyun adı", g.title], ["Konu", g.topic], ["Ders / Sınıf", g.lesson + " / " + g.grade], ["Ünite", g.unit],
+     ["Öğrenme çıktısı", g.outcomeCode + " " + g.outcome], ["İçerik kodu", g.contentCode], ["Oyun sürümü", C.version], ["İçerik sürümü", C.contentVersion],
+     ["Puanlı görev sayısı", String(scored)], ["Hak (genel / D-Y)", C.tries.default + " / " + C.tries.trueFalse],
+     ["Puanlama", "1.: " + C.scoring.default[1] + ", 2.: " + C.scoring.default[2] + ", 3.: " + C.scoring.default[3] + " • D/Y: " + C.scoring.trueFalse[1] + "/" + C.scoring.trueFalse[2]],
+     ["Seçenek karıştırma", C.random.shuffleOptions ? "Açık" : "Kapalı"]].map(([k, v]) => el("div", { class: "kv" }, el("b", { text: k }), v)))));
+  // İçerik kontrol uyarıları
+  c.append(el("section", {}, el("h2", { text: "⚠ Yayın Öncesi İçerik Kontrolleri" }), el("ul", { class: "checks" }, C.contentChecks.map(t => el("li", { text: t })))));
+  // Arapça metinler
+  c.append(el("section", {}, el("h2", { text: "Arapça Metinler" }), el("table", {},
+    el("tr", {}, el("th", { text: "Referans" }), el("th", { text: "Arapça" }), el("th", { text: "Meal" }), el("th", { text: "Ses" })),
+    Object.values(DATA.ARABIC).map(a => el("tr", {}, el("td", { text: a.ref }), el("td", { class: "ar", lang: "ar", dir: "rtl", text: a.text || "(gösterilmiyor)" }), el("td", { text: a.meal }), el("td", { text: C.media.audio[a.audio] ? C.media.audio[a.audio].src : "-" }))))));
+  // Sorular
+  const qs = el("section", {}, el("h2", { text: "Bölümler ve Sorular" }));
+  const tbl = el("table", {}, el("tr", {}, ["#", "Bölüm / çıktı", "Tür", "Soru / İfade", "Doğru cevap", "Diğer seçenekler", "Açıklama", "İpuçları"].map(h => el("th", { text: h }))));
+  let n = 0;
+  DATA.STAGES.forEach((s, si) => s.steps.forEach(st => {
+    let q = st.question || st.statement || "", right = "", others = "";
+    const types = { info: "Bilgi kartı", mcq: "Çoktan seçmeli", tf: "Doğru/Yanlış", multi: "Çoklu seçim", match: "Eşleştirme", record: "Kayıt (kart yerleştirme)", reflect: "Yorum yazma (puansız)", recordSheet: "Kayıt çıktısı" };
+    if (st.type === "mcq") { right = st.options.find(o => o.id === st.correct).text; others = st.options.filter(o => o.id !== st.correct).map(o => o.text).join(" | "); }
+    else if (st.type === "tf") right = st.answer ? "DOĞRU" : "YANLIŞ";
+    else if (st.type === "multi") { right = st.options.filter(o => st.correct.includes(o.id)).map(o => o.text).join(" | "); others = st.options.filter(o => !st.correct.includes(o.id)).map(o => o.text).join(" | "); }
+    else if (st.type === "match") right = st.pairs.map(p => p.left + " → " + p.right).join(" | ");
+    else if (st.type === "record") { right = st.slots.map(sl => sl.label + " → " + st.cards.find(cc => cc.id === sl.answer).text).join(" | "); others = st.cards.filter(cc => cc.id.startsWith("x_")).map(cc => cc.text).join(" | "); }
+    else if (st.type === "info") q = st.card ? DATA.INFO[st.card].title : "" ;
+    if (st.ayah) q += (q ? " + " : "") + DATA.ARABIC[st.ayah].ref;
+    n++;
+    tbl.append(el("tr", {}, el("td", { text: String(n) }), el("td", { text: (si + 1) + ". " + s.title + " (" + s.outcome + ")" + (st.source ? " • " + st.source : "") }),
+      el("td", { text: types[st.type] }), el("td", { text: q }), el("td", { class: right ? "correct" : "", text: right }), el("td", { text: others }),
+      el("td", { text: st.explanation || "" }), el("td", { text: (st.hints || []).join(" / ") })));
+  }));
+  qs.append(tbl); c.append(qs);
+  // Medya
+  const ms = el("section", {}, el("h2", { text: "Medya Kontrolü" }));
+  const mt = el("table", {}, el("tr", {}, ["Ad", "Yol", "Tür", "Önizleme", "Durum"].map(h => el("th", { text: h }))));
+  const rows = [];
+  Object.entries(C.media.images).forEach(([k, m]) => rows.push({ k, src: m.src, type: "Görsel", alt: m.alt }));
+  Object.entries(C.media.spiders).forEach(([k, s]) => ["front", "right", "left"].forEach(v => rows.push({ k: k + "/" + v, src: s[v], type: "Görsel (karakter)", alt: s.alt })));
+  Object.entries(C.media.audio).forEach(([k, m]) => rows.push({ k, src: m.src, type: "Ses (" + m.type + ")", label: m.label }));
+  rows.push({ k: "Arapça font", src: C.fonts.arabic.url, type: "Font" });
+  const seen = new Set();
+  rows.filter(r => !seen.has(r.src) && seen.add(r.src)).forEach(r => {
+    const st = el("td", { class: "warn", text: "Kontrol ediliyor…" });
+    const pv = el("td");
+    const ok = () => { st.className = "ok"; st.textContent = "✓ Dosya bulundu"; };
+    const bad = () => { st.className = "err"; st.textContent = "⚠ Dosya yüklenemedi / yol hatalı olabilir"; };
+    if (r.type.startsWith("Görsel")) { const i = el("img", { class: "thumb", src: r.src, alt: r.alt || "" }); i.onload = ok; i.onerror = bad; pv.append(i); }
+    else if (r.type.startsWith("Ses")) {
+      const a = new Audio(); a.preload = "metadata"; a.oncanplaythrough = ok; a.onloadedmetadata = ok; a.onerror = bad; a.src = r.src;
+      pv.append(el("button", { type: "button" }, "▶ Oynat")); pv.firstChild.onclick = () => a.play().catch(bad);
+      pv.append(el("div", { text: r.label }));
+    } else {
+      try { new FontFace("ChkFont", "url(" + encodeURI(r.src) + ")").load().then(ok, bad); } catch (e) { bad(); }
+      pv.append(el("span", { text: "Yoksa yedek Arapça fontlar kullanılır." }));
+    }
+    mt.append(el("tr", {}, el("td", { text: r.k }), el("td", { text: r.src }), el("td", { text: r.type }), pv, st));
+  });
+  ms.append(mt); c.append(ms);
+}
+function download(name, text, type) {
+  const a = el("a", { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+  document.body.append(a); a.click(); setTimeout(() => a.remove(), 500);
+}
+$("#btn-json").onclick = () => DATA && download("ankebut41_icerik.json", JSON.stringify(DATA, null, 2), "application/json;charset=utf-8");
+$("#btn-txt").onclick = () => {
+  if (!DATA) return;
+  const L = [DATA.CONFIG.game.title + " – Soru Listesi", ""];
+  DATA.STAGES.forEach((s, i) => { L.push((i + 1) + ". " + s.title + " (çıktı " + s.outcome + ")");
+    s.steps.forEach(st => {
+      if (st.type === "mcq") L.push("  [ÇS] " + st.question + " → " + st.options.find(o => o.id === st.correct).text);
+      if (st.type === "tf") L.push("  [D/Y] " + st.statement + " → " + (st.answer ? "D" : "Y"));
+      if (st.type === "multi") L.push("  [ÇOKLU] " + st.question + " → " + st.options.filter(o => st.correct.includes(o.id)).map(o => o.text).join(", "));
+      if (st.type === "match") L.push("  [EŞLEŞTİR] " + st.pairs.map(p => p.left + " = " + p.right).join(" ; "));
+      if (st.type === "record") L.push("  [KAYIT] " + st.slots.map(sl => sl.label + " = " + st.cards.find(c => c.id === sl.answer).text).join(" ; "));
+    }); L.push(""); });
+  download("ankebut41_sorular.txt", "﻿" + L.join("\r\n"), "text/plain;charset=utf-8");
+};
+</script>
+</body>
+</html>

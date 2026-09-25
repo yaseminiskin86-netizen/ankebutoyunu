@@ -1,0 +1,10 @@
+ANKEBUT SURESİ 41. AYET — ÖRÜMCEĞİN BİLGİ AĞI v26
+
+Son onaylı 1920x1080 yerleşim tüm oyun sahnelerine uygulanmıştır.
+- Sol bölüm listesi tek sütun ve sabit konumdadır.
+- Sertifika hedefi tüm oyun sahnelerinde x=%32,3 / y=%75,7 konumundadır.
+- Doğru cevaplarda aktif örümcek sertifika yönüne kademeli iner.
+- 6. Ağ: Ağı Renklendir tamamlandığında sonuç ve sertifika akışına geçer.
+- Intro, sesler, doğru/yanlış/bölüm geçiş efektleri ve mevcut oyun içeriği korunmuştur.
+
+Başlatmak için index.html dosyasını açın.
